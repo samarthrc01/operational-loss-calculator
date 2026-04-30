@@ -1,0 +1,46 @@
+# ========================
+# FRONTEND (React/Vite)
+# ========================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# ========================
+# BACKEND (Spring Boot)
+# ========================
+backend/target/
+backend/*.log
+
+# ========================
+# LOG FILES
+# ========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========================
+# SYSTEM FILES
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# EDITOR FILES
+# ========================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ========================
+# ENV FILES
+# ========================
+.env

@@ -17,8 +17,15 @@ public class LossController {
         this.lossRepository = lossRepository;
     }
 
+    // ✅ GET all losses
     @GetMapping
     public List<Loss> getAllLosses() {
         return lossRepository.findAll();
+    }
+
+    // ✅ ADD THIS (VERY IMPORTANT)
+    @PostMapping
+    public Loss createLoss(@RequestBody Loss loss) {
+        return lossRepository.save(loss);
     }
 }
