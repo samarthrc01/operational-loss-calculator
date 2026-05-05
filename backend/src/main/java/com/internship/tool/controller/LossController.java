@@ -5,7 +5,12 @@ import com.internship.tool.repository.LossRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.PrintWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -30,7 +35,7 @@ public class LossController {
                 .toList();
     }
 
-    // ✅ GET by ID (NEW - for detail page)
+    // ✅ GET by ID
     @GetMapping("/{id}")
     public Loss getLossById(@PathVariable Long id) {
         return lossRepository.findById(id)
@@ -91,7 +96,19 @@ public class LossController {
         return lossRepository.findAll(PageRequest.of(page, size));
     }
 
-    // ✅ DASHBOARD STATS (DAY 6 MAIN FEATURE)
+    // ✅ 🔥 DAY 7 FILTER (FIXED PROPERLY)
+    @GetMapping("/filter")
+    public List<Loss> filterLoss(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean deleted
+    ) {
+        return lossRepository.findAll().stream()
+                .filter(l -> (q == null || l.getDescription().toLowerCase().contains(q.toLowerCase())))
+                .filter(l -> (deleted == null || l.isDeleted() == deleted))
+                .toList();
+    }
+
+    // ✅ DASHBOARD STATS
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
 
@@ -100,16 +117,9 @@ public class LossController {
                 .filter(loss -> !loss.isDeleted())
                 .toList();
 
-        double total = losses.stream()
-                .mapToDouble(Loss::getAmount)
-                .sum();
-
+        double total = losses.stream().mapToDouble(Loss::getAmount).sum();
         double average = losses.isEmpty() ? 0 : total / losses.size();
-
-        double max = losses.stream()
-                .mapToDouble(Loss::getAmount)
-                .max()
-                .orElse(0);
+        double max = losses.stream().mapToDouble(Loss::getAmount).max().orElse(0);
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalLoss", total);
@@ -120,18 +130,59 @@ public class LossController {
         return stats;
     }
 
-    // ✅ LOGIN API
+    // ✅ 🔥 DAY 9: EXPORT CSV
+    @GetMapping("/export")
+    public void exportCSV(HttpServletResponse response) throws IOException {
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=losses.csv");
+
+        List<Loss> losses = lossRepository.findAll()
+                .stream()
+                .filter(l -> !l.isDeleted())
+                .toList();
+
+        PrintWriter writer = response.getWriter();
+
+        writer.println("ID,Amount,Description");
+
+        for (Loss l : losses) {
+            writer.println(l.getId() + "," + l.getAmount() + "," + l.getDescription());
+        }
+
+        writer.flush();
+        writer.close();
+    }
+
+    // ✅ 🔥 DAY 9: FILE UPLOAD
+    @PostMapping("/upload")
+    public String uploadFile(@RequestParam("file") MultipartFile file) {
+
+        if (file.isEmpty()) {
+            throw new RuntimeException("File is empty");
+        }
+
+        if (file.getSize() > 1024 * 1024) {
+            throw new RuntimeException("File size must be less than 1MB");
+        }
+
+        String fileName = file.getOriginalFilename();
+
+        if (fileName == null || !fileName.toLowerCase().endsWith(".csv")) {
+            throw new RuntimeException("Only CSV files are allowed");
+        }
+
+        return "File uploaded successfully: " + fileName;
+    }
+
+    // ✅ LOGIN
     @PostMapping("/login")
     public String login(@RequestBody Map<String, String> body) {
-
-        System.out.println("BODY: " + body);
 
         String username = body.get("username");
         String password = body.get("password");
 
-        if (username != null && password != null &&
-                username.trim().equals("admin") &&
-                password.trim().equals("admin123")) {
+        if ("admin".equals(username) && "admin123".equals(password)) {
             return "success";
         }
 

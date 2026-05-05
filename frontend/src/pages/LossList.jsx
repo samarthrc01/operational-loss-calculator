@@ -1,23 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useMemo } from "react";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
+import debounce from "lodash/debounce";
 
 function LossList() {
   const [losses, setLosses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(""); // ✅ NEW
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
 
-  useEffect(() => {
-    fetchLosses();
-  }, [page]);
-
+  // ✅ NORMAL FETCH (pagination)
   const fetchLosses = async () => {
     setLoading(true);
     try {
@@ -33,6 +32,63 @@ function LossList() {
     }
   };
 
+  useEffect(() => {
+    if (!search && !status) {
+      fetchLosses();
+    }
+  }, [page, search, status]);
+
+  // ✅ DEBOUNCED SEARCH + STATUS
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(async (value, statusValue) => {
+        try {
+          setLoading(true);
+          const res = await API.get(
+            `/losses/filter?q=${value}&deleted=${statusValue}`
+          );
+          setLosses(res.data || []);
+          setTotalPages(1); // disable pagination
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      }, 500),
+    []
+  );
+
+  // ✅ SEARCH INPUT
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearch(value);
+
+    if (value.trim() === "" && !status) {
+      fetchLosses();
+    } else {
+      debouncedSearch(value, status);
+    }
+  };
+
+  // ✅ STATUS FILTER
+  const handleStatus = (value) => {
+    setStatus(value);
+
+    if (!search && value === "") {
+      fetchLosses();
+    } else {
+      debouncedSearch(search, value);
+    }
+  };
+
+  // ✅ CLEANUP
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  // DELETE
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure?")) return;
 
@@ -44,18 +100,9 @@ function LossList() {
     }
   };
 
-  const handleSearch = async () => {
-    try {
-      const res = await API.get(`/losses/search?q=${search}`);
-      setLosses(res.data || []);
-      setPage(0);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const handleReset = () => {
     setSearch("");
+    setStatus("");
     setPage(0);
     fetchLosses();
   };
@@ -69,47 +116,66 @@ function LossList() {
         <div className="flex gap-2">
           <button
             onClick={() => navigate("/dashboard")}
-            className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+            className="bg-purple-500 text-white px-4 py-2 rounded"
           >
             Dashboard
           </button>
 
           <button
             onClick={() => navigate("/add")}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-green-500 text-white px-4 py-2 rounded"
           >
             Add Loss
           </button>
+          <button
+            onClick={() => navigate("/ai")}
+            className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+          >
+            AI Panel
+          </button>
+          <button
+            onClick={() => navigate("/analytics")}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Analytics
+          </button>
+
 
           <button
             onClick={() => {
               logout();
               navigate("/login");
             }}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            className="bg-red-500 text-white px-4 py-2 rounded"
           >
             Logout
           </button>
         </div>
       </div>
 
-      {/* SEARCH */}
-      <div className="mb-6 flex gap-2">
+      {/* 🔍 FILTERS (UPDATED) */}
+      <div className="mb-6 flex gap-2 items-center">
+        {/* SEARCH */}
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={handleSearchChange}
           className="border p-2 rounded w-64"
           placeholder="Search description..."
         />
 
-        <button
-          onClick={handleSearch}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
+        {/* STATUS DROPDOWN */}
+        <select
+          value={status}
+          onChange={(e) => handleStatus(e.target.value)}
+          className="border p-2 rounded"
         >
-          Search
-        </button>
+          <option value="">All</option>
+          <option value="false">Active</option>
+          <option value="true">Deleted</option>
+        </select>
 
+        {/* RESET */}
         <button
           onClick={handleReset}
           className="bg-gray-500 text-white px-4 py-2 rounded"
@@ -137,72 +203,66 @@ function LossList() {
               </thead>
 
               <tbody>
-                {losses
-                  .filter((loss) => loss !== null)
-                  .map((loss) => (
-                    <tr
-                      key={loss.id}
-                      className="text-center border-t hover:bg-gray-100"
-                    >
-                      {/* ❌ NOT CLICKABLE */}
-                      <td className="p-3">{loss.id}</td>
+                {losses.map((loss) => (
+                  <tr key={loss.id} className="text-center border-t">
+                    <td className="p-3">{loss.id}</td>
 
-                      {/* ❌ NOT CLICKABLE */}
-                      <td className="p-3">₹{loss.amount}</td>
+                    <td className="p-3">₹{loss.amount}</td>
 
-                      {/* ✅ ONLY THIS IS CLICKABLE */}
-                      <td className="p-3">
-                        <span
-                          className="cursor-pointer text-blue-600 hover:underline font-medium"
-                          onClick={() => navigate(`/detail/${loss.id}`)}
-                        >
-                          {loss.description}
-                        </span>
-                      </td>
+                    <td className="p-3">
+                      <span
+                        className="cursor-pointer text-blue-600 hover:underline"
+                        onClick={() => navigate(`/detail/${loss.id}`)}
+                      >
+                        {loss.description}
+                      </span>
+                    </td>
 
-                      <td className="p-3">
-                        <button
-                          onClick={() => navigate(`/edit/${loss.id}`)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
-                        >
-                          Edit
-                        </button>
+                    <td className="p-3">
+                      <button
+                        onClick={() => navigate(`/edit/${loss.id}`)}
+                        className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+                      >
+                        Edit
+                      </button>
 
-                        <button
-                          onClick={() => handleDelete(loss.id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                      <button
+                        onClick={() => handleDelete(loss.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* PAGINATION */}
-          <div className="mt-6 flex justify-center items-center gap-4">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={page === 0}
-              className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
-            >
-              Prev
-            </button>
+          {!search && !status && (
+            <div className="mt-6 flex justify-center items-center gap-4">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 0}
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+              >
+                Prev
+              </button>
 
-            <span className="font-medium">
-              Page {page + 1} of {totalPages}
-            </span>
+              <span>
+                Page {page + 1} of {totalPages}
+              </span>
 
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page + 1 >= totalPages}
-              className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={page + 1 >= totalPages}
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

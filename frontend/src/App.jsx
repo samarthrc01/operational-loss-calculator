@@ -5,6 +5,8 @@ import EditLoss from "./pages/EditLoss";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import LossDetail from "./pages/LossDetail";
+import AIPanel from "./pages/AIPanel";
+import Analytics from "./pages/Analytics"; // ✅ NEW (Day 10)
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
@@ -16,7 +18,7 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* 🔐 Login Page (Prevent access if already logged in) */}
+        {/* 🔐 Login */}
         <Route
           path="/login"
           element={
@@ -26,7 +28,6 @@ function App() {
 
         {/* 🔒 Protected Routes */}
 
-        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -36,7 +37,6 @@ function App() {
           }
         />
 
-        {/* List Page */}
         <Route
           path="/"
           element={
@@ -46,7 +46,6 @@ function App() {
           }
         />
 
-        {/* Add */}
         <Route
           path="/add"
           element={
@@ -56,7 +55,6 @@ function App() {
           }
         />
 
-        {/* Edit */}
         <Route
           path="/edit/:id"
           element={
@@ -66,7 +64,6 @@ function App() {
           }
         />
 
-        {/* Detail */}
         <Route
           path="/detail/:id"
           element={
@@ -76,7 +73,27 @@ function App() {
           }
         />
 
-        {/* ✅ DEFAULT REDIRECT */}
+        {/* 🤖 AI PANEL (Day 8) */}
+        <Route
+          path="/ai"
+          element={
+            <ProtectedRoute>
+              <AIPanel />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 📊 ANALYTICS PAGE (Day 10 🔥) */}
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default */}
         <Route path="*" element={<Navigate to="/" />} />
 
       </Routes>
