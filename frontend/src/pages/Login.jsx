@@ -2,61 +2,74 @@ import { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import API from "../services/api";
 import { useNavigate } from "react-router-dom";
+import "./LoginPage.css"; // ✅ your CSS file
 
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      // ✅ FIX: correct backend URL
       const res = await API.post("/losses/login", {
         username,
         password,
       });
 
-      console.log(res.data); // debug
-
       if (res.data === "success") {
         login();
         navigate("/");
       } else {
-        alert("Invalid credentials ❌");
+        setError("Invalid username or password ❌");
       }
-
-    } catch (error) {
-      console.error(error);
-      alert("Login failed ❌");
+    } catch (err) {
+      setError("Unable to login. Please try again ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center mt-20">
-      <form onSubmit={handleLogin} className="bg-white p-6 shadow rounded w-80">
-        <h2 className="text-xl mb-4 text-center font-bold">Login</h2>
+    <div className="login-container">
+      <form onSubmit={handleLogin} className="login-card">
+        
+        <h2>Welcome Back 👋</h2>
+        <p className="subtitle">Login to your account</p>
 
+        {/* Username */}
         <input
-          placeholder="Username"
-          className="border p-2 mb-2 w-full rounded"
+          type="text"
+          placeholder="Enter username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          required
         />
 
+        {/* Password */}
         <input
           type="password"
-          placeholder="Password"
-          className="border p-2 mb-3 w-full rounded"
+          placeholder="Enter password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
-        <button className="bg-blue-500 hover:bg-blue-600 text-white w-full p-2 rounded">
-          Login
+        {/* Error */}
+        {error && <p className="error">{error}</p>}
+
+        {/* Button */}
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
         </button>
+
       </form>
     </div>
   );

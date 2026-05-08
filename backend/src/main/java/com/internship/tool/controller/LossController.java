@@ -26,35 +26,36 @@ public class LossController {
         this.lossRepository = lossRepository;
     }
 
-    // ✅ GET all (exclude deleted)
+    // ✅ 1. GET ALL
     @GetMapping
     public List<Loss> getAllLosses() {
-        return lossRepository.findAll()
-                .stream()
-                .filter(loss -> !loss.isDeleted())
-                .toList();
+        return lossRepository.findByDeletedFalse();
     }
 
-    // ✅ GET by ID
+    // ✅ 2. GET BY ID (FIXED ERROR MESSAGE)
     @GetMapping("/{id}")
     public Loss getLossById(@PathVariable Long id) {
         return lossRepository.findById(id)
                 .filter(loss -> !loss.isDeleted())
-                .orElseThrow(() -> new RuntimeException("Loss not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Loss not found with ID: " + id)
+                );
     }
 
-    // ✅ CREATE
+    // ✅ 3. CREATE
     @PostMapping
     public Loss createLoss(@RequestBody Loss loss) {
         return lossRepository.save(loss);
     }
 
-    // ✅ UPDATE
+    // ✅ 4. UPDATE (FIXED ERROR MESSAGE)
     @PutMapping("/{id}")
     public Loss updateLoss(@PathVariable Long id, @RequestBody Loss updatedLoss) {
 
         Loss loss = lossRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Loss not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Loss not found with ID: " + id)
+                );
 
         loss.setAmount(updatedLoss.getAmount());
         loss.setDescription(updatedLoss.getDescription());
@@ -62,12 +63,14 @@ public class LossController {
         return lossRepository.save(loss);
     }
 
-    // ✅ DELETE (SOFT DELETE)
+    // ✅ 5. DELETE (FIXED ERROR MESSAGE)
     @DeleteMapping("/{id}")
     public String deleteLoss(@PathVariable Long id) {
 
         Loss loss = lossRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Loss not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Loss not found with ID: " + id)
+                );
 
         loss.setDeleted(true);
         lossRepository.save(loss);
@@ -75,47 +78,57 @@ public class LossController {
         return "Deleted successfully";
     }
 
-    // ✅ SEARCH
+    // ✅ 6. SEARCH
     @GetMapping("/search")
-    public List<Loss> searchLoss(@RequestParam String q) {
-        return lossRepository.findAll()
-                .stream()
-                .filter(loss ->
-                        !loss.isDeleted() &&
-                        loss.getDescription().toLowerCase().contains(q.toLowerCase())
-                )
-                .toList();
+    public Page<Loss> searchLoss(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        return lossRepository.findByDescriptionContainingIgnoreCaseAndDeletedFalse(
+                q,
+                PageRequest.of(page, size)
+        );
     }
 
-    // ✅ PAGINATION
+    // ✅ 7. PAGINATION
     @GetMapping("/all")
     public Page<Loss> getAllLossesWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size
     ) {
-        return lossRepository.findAll(PageRequest.of(page, size));
+        return lossRepository.findByDeletedFalse(PageRequest.of(page, size));
     }
 
-    // ✅ 🔥 DAY 7 FILTER (FIXED PROPERLY)
-    @GetMapping("/filter")
-    public List<Loss> filterLoss(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Boolean deleted
-    ) {
-        return lossRepository.findAll().stream()
-                .filter(l -> (q == null || l.getDescription().toLowerCase().contains(q.toLowerCase())))
-                .filter(l -> (deleted == null || l.isDeleted() == deleted))
-                .toList();
+    // ✅ 8. FILTER (REMOVED DEBUG LOG ✔)
+   @GetMapping("/filter")
+public Page<Loss> filterLoss(
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) Boolean deleted,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "5") int size
+) {
+
+    // If no search query
+    if (q == null || q.trim().isEmpty()) {
+
+        // Show only non-deleted
+        return lossRepository.findByDeletedFalse(
+                PageRequest.of(page, size)
+        );
     }
 
-    // ✅ DASHBOARD STATS
+    // Search by description
+    return lossRepository.findByDescriptionContainingIgnoreCaseAndDeletedFalse(
+            q,
+            PageRequest.of(page, size)
+    );
+}
+    // ✅ 9. STATS
     @GetMapping("/stats")
     public Map<String, Object> getStats() {
 
-        List<Loss> losses = lossRepository.findAll()
-                .stream()
-                .filter(loss -> !loss.isDeleted())
-                .toList();
+        List<Loss> losses = lossRepository.findByDeletedFalse();
 
         double total = losses.stream().mapToDouble(Loss::getAmount).sum();
         double average = losses.isEmpty() ? 0 : total / losses.size();
@@ -130,17 +143,14 @@ public class LossController {
         return stats;
     }
 
-    // ✅ 🔥 DAY 9: EXPORT CSV
+    // ✅ 10. EXPORT CSV
     @GetMapping("/export")
     public void exportCSV(HttpServletResponse response) throws IOException {
 
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=losses.csv");
 
-        List<Loss> losses = lossRepository.findAll()
-                .stream()
-                .filter(l -> !l.isDeleted())
-                .toList();
+        List<Loss> losses = lossRepository.findByDeletedFalse();
 
         PrintWriter writer = response.getWriter();
 
@@ -154,12 +164,12 @@ public class LossController {
         writer.close();
     }
 
-    // ✅ 🔥 DAY 9: FILE UPLOAD
+    // ✅ 11. FILE UPLOAD (IMPROVED ERROR MESSAGES)
     @PostMapping("/upload")
     public String uploadFile(@RequestParam("file") MultipartFile file) {
 
         if (file.isEmpty()) {
-            throw new RuntimeException("File is empty");
+            throw new RuntimeException("Uploaded file is empty");
         }
 
         if (file.getSize() > 1024 * 1024) {
@@ -175,7 +185,7 @@ public class LossController {
         return "File uploaded successfully: " + fileName;
     }
 
-    // ✅ LOGIN
+    // ✅ 12. LOGIN (IMPROVED MESSAGE)
     @PostMapping("/login")
     public String login(@RequestBody Map<String, String> body) {
 
@@ -186,6 +196,6 @@ public class LossController {
             return "success";
         }
 
-        throw new RuntimeException("Invalid credentials");
+        throw new RuntimeException("Invalid username or password");
     }
 }

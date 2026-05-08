@@ -1,5 +1,7 @@
 CREATE TABLE loss (
     id SERIAL PRIMARY KEY,
     amount DOUBLE PRECISION,
-    description VARCHAR(255)
+    description TEXT,
+    deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP
 );

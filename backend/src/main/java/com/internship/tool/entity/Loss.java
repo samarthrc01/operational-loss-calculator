@@ -13,27 +13,51 @@ public class Loss {
     private Long id;
 
     private Double amount;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    // ✅ ADD THIS (soft delete)
+    // Soft delete
     private boolean deleted = false;
 
-    // ✅ OPTIONAL (good practice)
+    @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    // Getters & Setters
-    public Long getId() { return id; }
+    // Getters and Setters
 
-    public Double getAmount() { return amount; }
-    public void setAmount(Double amount) { this.amount = amount; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public Double getAmount() {
+        return amount;
+    }
 
-    // ✅ NEW
-    public boolean isDeleted() { return deleted; }
-    public void setDeleted(boolean deleted) { this.deleted = deleted; }
+    public void setAmount(Double amount) {
+        this.amount = amount;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
