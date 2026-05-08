@@ -44,3 +44,5 @@ Thumbs.db
 # ENV FILES
 # ========================
 .env
+*.mp4
+demo/
